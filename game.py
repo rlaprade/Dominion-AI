@@ -1,4 +1,6 @@
 import players
+from cards import *
+from tools import Counter
 
 class GameSpace(object):
     def __init__(self, num_players, kingdom_cards):
@@ -9,13 +11,13 @@ class GameSpace(object):
         for card in kingdom_cards:
             self.supply[card] = 10
         
-        self.supply["copper"] = 60 - 7*self.num_players
-        self.supply["silver"] = 40
-        self.supply["gold"] = 30
-        self.supply["estate"] = 24 - 3*self.num_players
-        self.supply["duchy"] = 8 if self.num_players<=2 else 12
-        self.supply["province"] = 8 if self.num_players<=2 else 12
-        self.supply["curse"] = 10*(self.num_players - 1)
+        self.supply[copper] = 60 - 7*self.num_players
+        self.supply[silver] = 40
+        self.supply[gold] = 30
+        self.supply[estate] = 24 - 3*self.num_players
+        self.supply[duchy] = 8 if self.num_players<=2 else 12
+        self.supply[province] = 8 if self.num_players<=2 else 12
+        self.supply[curse] = 10*(self.num_players - 1)
         
     def sell(self, card):
         """Method for when a player attempts
@@ -23,7 +25,7 @@ class GameSpace(object):
         exception if none available.
         """
         if self.supply[card] <= 0:
-            raise Exception("No {} cards remaining in supply".format(card))
+            raise Exception("No {} cards remaining in supply.".format(card))
         self.supply[card] -= 1
         
     def play(self):
@@ -48,7 +50,7 @@ class GameSpace(object):
         """Return True if the game ends
         i.e. No provinces left or 3 piles empty
         """
-        if self.supply["province"] == 0:
+        if self.supply[province] == 0:
             return True
         empty_piles = 0
         for card in self.supply:
@@ -58,16 +60,3 @@ class GameSpace(object):
             return True
         return False
         
-        
-class Counter(dict):
-    """The Counter class is a dictionary that will
-    give zero for keys that are not in the dictionary,
-    rather than raising an error.
-    """
-    
-    def __getitem__(self, key):
-        if key in self:
-            return dict.__getitem__(self, key)
-        return 0
-    
-    

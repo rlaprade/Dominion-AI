@@ -1,5 +1,6 @@
 import game
 import players
+from cards import *
 
 while True:
     human_players = input("How many human players? ")
@@ -42,10 +43,23 @@ for i in range(1, num_players+1):
 kingdom_cards = []
 while True:
     for _ in range(10):
-        kingdom_cards.append(input("Give the name of a kingdom card to play with:  "))
+        while True:
+            card = input("Give the name of a kingdom card to play with:  ")
+            try:
+                ### Purely for testing, remove following lines before product ship ###
+                if card == "":
+                    break
+                ### End test lines ###
+                card = eval(card)
+                if isinstance(card, Card):
+                    break
+            except:
+                pass
+            print('No card called "{}"'.format(card))
+        kingdom_cards.append(card)
     print("\nKingdom cards are: {}".format(kingdom_cards))
     while True:
-        correct = input("Is this correct? (yes or no)")
+        correct = input("Is this correct? (yes or no) ")
         if correct not in ["yes", "no"]:
             continue
         break
@@ -57,5 +71,5 @@ for i in range(1, num_players+1):
     if i in ai_seats:
         game_space.players.append(eval("players.{}".format(names[i]))(game_space))
     else:
-        game_space.players.append(players.HumanPlayer(game_space,names[i]))
+        game_space.players.append(players.HumanNoCards(game_space,names[i]))
 game_space.play()

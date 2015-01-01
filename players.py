@@ -1,25 +1,26 @@
 import random
 from cards import *
+from tools import cost
 
-victory_point_cards = nonkingdom_victory_point_cards
-victory_point_cards["garden"] = lambda player: len(player.all_cards)/10
+# victory_point_cards = nonkingdom_victory_point_cards
+# victory_point_cards["garden"] = lambda player: len(player.all_cards)/10
 
 
 class Player(object):
     def __init__(self, game_space):
         self.game = game_space
-        self.deck = 7*["copper"] + 3*["estate"]
+        self.deck = 7*[copper] + 3*[estate]
         self.discard = []
         self.hand = []
         self.played = []
-        self.set_aside = []
+        self.durations = []
         random.shuffle(self.deck)
-        self.draw(5)
-        self.reset_turn_variables()
+        self.end_turn()
         
     def take_turn(self):
         """Method for taking a turn"""
-        pass
+        self.duration_effects()
+        self.end_turn()
     
     def draw(self, num_cards):
         """Draws num_cards from deck,
@@ -50,9 +51,37 @@ class Player(object):
         if card not in self.hand:
             raise Exception("No {} in hand".format(card))
         self.hand.pop(self.hand.index(card))
-        self.played.append(card)
-        eval(card)(self)
-    
+        if isinstance(card, ActionDuration):
+            self.durations.append(card)
+        else:
+            self.played.append(card)
+        if isinstance(card, Action):
+            self.play_action(card)
+        elif isinstance(card, Treasure):
+            self.play_treasure(card)
+
+    def play_action(self, card):
+        self.draw(card.plus_cards)
+        self.available_actions += card.plus_actions - 1
+        self.buying_power += card.plus_money
+        self.num_buys += card.plus_buys
+        card.effect(self)
+        
+    def play_treasure(self, card):
+        self.buying_power += card.plus_money
+        card.effect(self)
+        
+    def duration_effects(self):
+        """Enact effects of duration cards left over from the previous turn"""
+        for card in self.durations:
+            self.draw(card.duration_cards)
+            self.available_actions += card.duration_actions
+            self.buying_power += card.duration_money
+            self.num_buys += card.duration_buys
+            card.effect(self)
+        self.played = self.durations + []
+        self.durations = []
+            
     def buy(self, card):
         """Attempts to buy a card specified by
         given card string.  Returns False if unable to
@@ -60,37 +89,49 @@ class Player(object):
         True if purchase is successful.
         """
         if self.buying_power < cost(card) or self.num_buys < 1:
-            return False
-        try:
-            self.game.sell(card)
-        except Exception as e:
-            return False
+            # return False
+            raise Exception("Insufficient resources to buy {}".format(card))
+        # try:
+        self.game.sell(card)
+        # except Exception as e:
+            # return False
         self.buying_power -= cost(card)
         self.num_buys -= 1
         self.discard.append(card)
         return True
     # Need to deal with cards costing potions
         
-    def reset_turn_variables(self):
+    def end_turn(self):
+        """Resets all turn variables and puts
+        all used cards into discard and draws 
+        a new hand, thus preparing for next turn.
+        """
         self.buying_power = 0  # Available money
         self.num_buys = 1
         self.available_actions = 1
         self.available_potions = 0
+        self.discard = self.played + self.discard
+        self.discard = self.hand + self.discard
+        self.played, self.hand = [], []
+        self.draw(5)
         
     @property
     def all_cards(self):
         """Returns a list of all cards the player owns"""
-        return self.deck + self.hand + self.set_aside + self.discard
+        return self.deck + self.hand + self.durations + self.discard
         
     @property
     def victory_points(self):
         """Returns the player's current victory point total"""
         score = 0
         for card in self.all_cards:
-            if card in victory_point_cards:
-                score += victory_point_cards[card](self)
+            if isinstance(card, Victory):
+                score += card.victory_points
         return score
-
+        
+    @property
+    def cards_in_play(self):
+        return self.played + self.durations
         
 class HumanPlayer(Player):
     def __init__(self, game_space, name):
@@ -99,10 +140,12 @@ class HumanPlayer(Player):
 
     def take_turn(self):
         print("\n{}'s turn".format(self.name))
+        self.duration_effects()
         played_cards = input("Cards you play affecting other players:\n").split()
         for card in played_cards:
+            card = eval(card)
             try:
-                eval(card)(self)
+                self.play_card(card)
             except Exception as e:
                 print(e)
         while True:
@@ -116,10 +159,45 @@ class HumanPlayer(Player):
                     print("{} purchased".format(card))
                 except Exception as e:
                     print(e)
-                    
+        self.end_turn()
                 
     def __repr__(self):
         return self.name
         
     def __str__(self):
         return self.name
+        
+class HumanNoCards(HumanPlayer):
+    def take_turn(self):
+        print("\n{}'s turn".format(self.name))
+        self.duration_effects()
+        while True:
+            print("\nHand:  {},  In Play:  {},  Actions:  {}".format(self.hand, self.played, self.available_actions))
+            card = input("What card do you wish to play? (type 'done' if finished) ")
+            if card == "done" or card == "":
+                break
+            try:
+                self.play_card(eval(card))
+            except Exception as e:
+                print(e)
+        # Play all remaining treasure
+        treasures_in_hand = []
+        for card in self.hand:
+            if isinstance(card, Treasure):
+                treasures_in_hand.append(card)
+        for card in treasures_in_hand:
+            self.play_card(card)
+        while True:
+            if self.num_buys == 0:
+                break
+            print("\nMoney:  {},  Buys:  {}".format(self.buying_power, self.num_buys))
+            card = input("What card do you wish to buy? (type 'done' if finished) ")
+            if card == "done" or card == "":
+                break
+            try:
+                self.buy(eval(card))
+                print("{} purchased".format(card))
+            except Exception as e:
+                print(e)
+            
+        self.end_turn()

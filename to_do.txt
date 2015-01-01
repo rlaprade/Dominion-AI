@@ -1,8 +1,9 @@
-Make gamespace
-Make cost function
+Implement trash
+Attack cards
+Write tests
+Do something better with durations (coding practices)
 Make ai players
 Deal with purchasing with potions
-Deal with duration cards
 Deal with choices
 Make ai players learn
 
@@ -10,3 +11,8 @@ Make ai players learn
 Maybe:
 
 Make error classes
+
+
+Possible Errors Seen:
+
+Had 2 wharves after buying only one
