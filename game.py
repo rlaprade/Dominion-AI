@@ -7,6 +7,7 @@ class GameSpace(object):
         self.supply = Counter()
         self.num_players = num_players
         self.players = []
+        self.trash = []
         
         for card in kingdom_cards:
             self.supply[card] = 10
@@ -22,10 +23,10 @@ class GameSpace(object):
     def sell(self, card):
         """Method for when a player attempts
         to buy the given card.  Raises an 
-        exception if none available.
+        exception if none remain in supply.
         """
         if self.supply[card] <= 0:
-            raise Exception("No {} cards remaining in supply.".format(card))
+            raise SupplyError(card)
         self.supply[card] -= 1
         
     def play(self):

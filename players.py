@@ -1,6 +1,6 @@
 import random
 from cards import *
-from tools import cost
+from errors import *
 
 # victory_point_cards = nonkingdom_victory_point_cards
 # victory_point_cards["garden"] = lambda player: len(player.all_cards)/10
@@ -30,6 +30,7 @@ class Player(object):
             if not self.deck:
                 if self.discard:
                     self.deck = self.discard
+                    self.discard = []
                     random.shuffle(self.deck)
                 else:
                     return
@@ -40,27 +41,39 @@ class Player(object):
         Raises an exception if the card is not in hand.
         """
         if card not in self.hand:
-            raise Exception("No {} in hand".format(card))
+            raise HandError(card)
         self.hand.pop(self.hand.index(card))
         self.discard.append(card)
+        
+    def trash_from_hand(self, card):
+        """Trashes the given card from hand.
+        Raises an exception if the card is not in hand.
+        """
+        if card not in self.hand:
+            raise HandError(card)
+        self.hand.pop(self.hand.index(card))
+        self.game.trash.append(card)
         
     def play_card(self, card):
         """Plays the given card and puts in the played area.
         Raises an exception if the card is not in hand.
         """
         if card not in self.hand:
-            raise Exception("No {} in hand".format(card))
-        self.hand.pop(self.hand.index(card))
+            raise HandError(card)
         if isinstance(card, ActionDuration):
             self.durations.append(card)
-        else:
-            self.played.append(card)
+        
         if isinstance(card, Action):
             self.play_action(card)
         elif isinstance(card, Treasure):
             self.play_treasure(card)
 
     def play_action(self, card):
+        """Plays the given action card"""
+        if self.available_actions <= 0:
+            raise ZeroActionsError(card)
+        self.hand.pop(self.hand.index(card))
+        self.played.append(card)
         self.draw(card.plus_cards)
         self.available_actions += card.plus_actions - 1
         self.buying_power += card.plus_money
@@ -68,6 +81,9 @@ class Player(object):
         card.effect(self)
         
     def play_treasure(self, card):
+        """Plays the given treasure card"""
+        self.hand.pop(self.hand.index(card))
+        self.played.append(card)
         self.buying_power += card.plus_money
         card.effect(self)
         
@@ -79,7 +95,6 @@ class Player(object):
             self.buying_power += card.duration_money
             self.num_buys += card.duration_buys
             card.effect(self)
-        self.played = self.durations + []
         self.durations = []
             
     def buy(self, card):
@@ -88,14 +103,13 @@ class Player(object):
         buy (not enough money or none remaining). Returns
         True if purchase is successful.
         """
-        if self.buying_power < cost(card) or self.num_buys < 1:
-            # return False
-            raise Exception("Insufficient resources to buy {}".format(card))
+        if self.buying_power < card.cost or self.num_buys < 1:
+            raise InsufficientFundsError(card)
         # try:
         self.game.sell(card)
         # except Exception as e:
             # return False
-        self.buying_power -= cost(card)
+        self.buying_power -= card.cost
         self.num_buys -= 1
         self.discard.append(card)
         return True
@@ -110,15 +124,18 @@ class Player(object):
         self.num_buys = 1
         self.available_actions = 1
         self.available_potions = 0
+        for card in self.durations:
+            self.played.pop(self.played.index(card))
         self.discard = self.played + self.discard
         self.discard = self.hand + self.discard
-        self.played, self.hand = [], []
+        self.played = self.durations
+        self.hand = []
         self.draw(5)
         
     @property
     def all_cards(self):
         """Returns a list of all cards the player owns"""
-        return self.deck + self.hand + self.durations + self.discard
+        return self.deck + self.hand + self.cards_in_play + self.discard
         
     @property
     def victory_points(self):
@@ -131,7 +148,14 @@ class Player(object):
         
     @property
     def cards_in_play(self):
-        return self.played + self.durations
+        return self.played
+        
+    def voluntary_trash(self, num):
+        """Trashes up to num cards from the hand,
+        the player chooses which ones and how many
+        """
+        pass
+    
         
 class HumanPlayer(Player):
     def __init__(self, game_space, name):
@@ -160,12 +184,28 @@ class HumanPlayer(Player):
                 except Exception as e:
                     print(e)
         self.end_turn()
+        
+    def voluntary_trash(self, num):
+        """Allows the player to trash up to num cards from their hand"""
+        while num > 0:
+            card_str = input("Choose a card to trash (leave blank if you do not wish to trash)\n")
+            if not card_str:
+                break
+            try:
+                card = eval(card_str)
+            except Exception as e:
+                print("No such card {}.".format(card))
+                continue
+            self.game.trash.append(card)
+            print("Trashed {}.".format(card))
+            num -= 1
                 
     def __repr__(self):
         return self.name
         
     def __str__(self):
         return self.name
+
         
 class HumanNoCards(HumanPlayer):
     def take_turn(self):
@@ -173,7 +213,7 @@ class HumanNoCards(HumanPlayer):
         self.duration_effects()
         while True:
             print("\nHand:  {},  In Play:  {},  Actions:  {}".format(self.hand, self.played, self.available_actions))
-            card = input("What card do you wish to play? (type 'done' if finished) ")
+            card = input("What card do you wish to play? (leave blank if ready to buy) ")
             if card == "done" or card == "":
                 break
             try:
@@ -198,6 +238,27 @@ class HumanNoCards(HumanPlayer):
                 self.buy(eval(card))
                 print("{} purchased".format(card))
             except Exception as e:
-                print(e)
-            
+                print(e)            
         self.end_turn()
+        
+    def voluntary_trash(self, num):
+        """Allows the player to trash up to num cards from their hand"""
+        while num > 0 and len(self.hand) > 0:
+            print("\nCurrent hand:  {}".format(self.hand))
+            card_str = input("Choose a card to trash (leave blank if you do not wish to trash)\n")
+            if not card_str:
+                break
+            try:
+                card = eval(card_str)
+            except Exception as e:
+                print("No such card {}.".format(card))
+                continue
+            try:
+                self.trash_from_hand(card)
+            except HandError as e:
+                print(e)
+                continue
+            print("Trashed {}.".format(card))
+            num -= 1
+            
+    

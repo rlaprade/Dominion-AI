@@ -1,5 +1,6 @@
 # This file will contain all the non-kingdom cards and import all kingdom cards
 from card_classes import *
+from dominion_base_set import *
 from seaside import *
 
 ### Treasure Cards ###
