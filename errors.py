@@ -43,4 +43,3 @@ class InsufficientFundsError(CardError):
 class ZeroActionsError(CardError):
     def __str__(self):
         return "You cannot play {} because you have no remaining actions.".format(self.card)
-    
