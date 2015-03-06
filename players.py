@@ -136,7 +136,7 @@ class Player(object):
     def all_cards(self):
         """Returns a list of all cards the player owns"""
         return self.deck + self.hand + self.cards_in_play + self.discard
-        
+
     @property
     def victory_points(self):
         """Returns the player's current victory point total"""
@@ -145,18 +145,17 @@ class Player(object):
             if isinstance(card, Victory):
                 score += card.victory_points
         return score
-        
+
     @property
     def cards_in_play(self):
         return self.played
-        
+
     def voluntary_trash(self, num):
         """Trashes up to num cards from the hand,
         the player chooses which ones and how many
         """
         pass
-    
-        
+
 class HumanPlayer(Player):
     def __init__(self, game_space, name):
         super().__init__(game_space)
@@ -184,7 +183,7 @@ class HumanPlayer(Player):
                 except Exception as e:
                     print(e)
         self.end_turn()
-        
+
     def voluntary_trash(self, num):
         """Allows the player to trash up to num cards from their hand"""
         while num > 0:
@@ -199,14 +198,14 @@ class HumanPlayer(Player):
             self.game.trash.append(card)
             print("Trashed {}.".format(card))
             num -= 1
-                
+
     def __repr__(self):
         return self.name
-        
+
     def __str__(self):
         return self.name
 
-        
+
 class HumanNoCards(HumanPlayer):
     def take_turn(self):
         print("\n{}'s turn".format(self.name))
@@ -240,7 +239,7 @@ class HumanNoCards(HumanPlayer):
             except Exception as e:
                 print(e)            
         self.end_turn()
-        
+
     def voluntary_trash(self, num):
         """Allows the player to trash up to num cards from their hand"""
         while num > 0 and len(self.hand) > 0:
@@ -260,5 +259,3 @@ class HumanNoCards(HumanPlayer):
                 continue
             print("Trashed {}.".format(card))
             num -= 1
-            
-    

@@ -60,4 +60,3 @@ class GameSpace(object):
         if empty_piles >= 3:
             return True
         return False
-        
