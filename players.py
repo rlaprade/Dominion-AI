@@ -7,21 +7,30 @@ from errors import *
 
 
 class Player(object):
-    def __init__(self, game_space):
+    def __init__(self, game_space, custom_deck=None):
         self.game = game_space
-        self.deck = 7*[copper] + 3*[estate]
+        if custom_deck:
+            self.deck = custom_deck
+        else:
+            self.deck = 7*[copper] + 3*[estate]
         self.discard = []
         self.hand = []
         self.played = []
         self.durations = []
         random.shuffle(self.deck)
-        self.end_turn()
+        self.buying_power = 0  # Available money
+        self.num_buys = 1
+        self.available_actions = 1
+        self.available_potions = 0
+        self.draw(5)
         
     def take_turn(self):
-        """Method for taking a turn"""
+        """Method for taking a turn. Subclass must define take_turn_impl(self)"""
+        print("\n{}'s turn".format(self))
         self.duration_effects()
+        self.take_turn_impl()
         self.end_turn()
-    
+
     def draw(self, num_cards):
         """Draws num_cards from deck,
         putting them in hand.
@@ -162,9 +171,7 @@ class HumanPlayer(Player):
         super().__init__(game_space)
         self.name = name
 
-    def take_turn(self):
-        print("\n{}'s turn".format(self.name))
-        self.duration_effects()
+    def take_turn_impl(self):
         played_cards = input("Cards you play affecting other players:\n").split()
         for card in played_cards:
             card = eval(card)
@@ -183,8 +190,7 @@ class HumanPlayer(Player):
                     print("{} purchased".format(card))
                 except Exception as e:
                     print(e)
-        self.end_turn()
-        
+
     def voluntary_trash(self, num):
         """Allows the player to trash up to num cards from their hand"""
         while num > 0:
@@ -208,9 +214,7 @@ class HumanPlayer(Player):
 
         
 class HumanNoCards(HumanPlayer):
-    def take_turn(self):
-        print("\n{}'s turn".format(self.name))
-        self.duration_effects()
+    def take_turn_impl(self):
         while True:
             print("\nHand:  {},  In Play:  {},  Actions:  {}".format(self.hand, self.played, self.available_actions))
             card = input("What card do you wish to play? (leave blank if ready to buy) ")
@@ -239,8 +243,7 @@ class HumanNoCards(HumanPlayer):
                 print("{} purchased".format(card))
             except Exception as e:
                 print(e)            
-        self.end_turn()
-        
+
     def voluntary_trash(self, num):
         """Allows the player to trash up to num cards from their hand"""
         while num > 0 and len(self.hand) > 0:
