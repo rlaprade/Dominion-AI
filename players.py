@@ -7,8 +7,9 @@ from errors import *
 
 
 class Player(object):
-    def __init__(self, game_space, custom_deck=None):
+    def __init__(self, game_space, custom_deck=None, suppress_logging=False):
         self.game = game_space
+        self.suppress_logging = suppress_logging
         if custom_deck:
             self.deck = custom_deck
         else:
@@ -26,7 +27,8 @@ class Player(object):
         
     def take_turn(self):
         """Method for taking a turn. Subclass must define take_turn_impl(self)"""
-        print("\n{}'s turn".format(self))
+        if not self.suppress_logging:
+            print("\n{}'s turn".format(self))
         self.duration_effects()
         self.take_turn_impl()
         self.end_turn()

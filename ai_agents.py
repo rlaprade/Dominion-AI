@@ -5,16 +5,18 @@ from players import Player
 
 
 class AiPlayer(Player):
-    def __init__(self, game_space, custom_deck=None, evaluator=None):
-        super().__init__(game_space, custom_deck)
+    def __init__(self, game_space, custom_deck=None, evaluator=None, suppress_logging=False):
+        super().__init__(game_space, custom_deck, suppress_logging)
         self.evaluator = evaluator
+        self.suppress_logging = suppress_logging
 
     def play_card(self, card):
-        print(f"{self} plays a {card}")
+        if not self.suppress_logging:
+            print(f"{self} plays a {card}")
         super().play_card(card)
 
     def buy(self, card):
-        if super().buy(card):
+        if super().buy(card) and not self.suppress_logging:
             print(f"{self} buys a {card}")
 
     def end_turn(self):
@@ -26,16 +28,16 @@ class AiPlayer(Player):
 class RandomAgent(AiPlayer):
     next_id = 0
 
-    def __init__(self, game_space, custom_deck=None, evaluator=None):
-        super().__init__(game_space, custom_deck, evaluator)
+    def __init__(self, game_space, **kwargs):
+        super().__init__(game_space, **kwargs)
         self.id = RandomAgent.next_id
         RandomAgent.next_id += 1
 
     def __repr__(self):
-        return f"RandomAgent {id}"
+        return f"RandomAgent {self.id}"
 
     def __str__(self):
-        return f"RandomAgent {id}"
+        return f"RandomAgent {self.id}"
 
     def currently_held_action_cards(self):
         """Returns a list of all action cards currently in hand."""
